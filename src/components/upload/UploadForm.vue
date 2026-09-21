@@ -904,12 +904,31 @@ methods: {
             // 对上传渠道为外链的，不修改链接
             const uploadChannel = fileItem.uploadChannel || this.uploadChannel
             if (uploadChannel !== 'external') {
-                // 从response.data[0].src中去除/file/前缀
-                const srcID = response.data[0].src.replace('/file/', '')
-                fileItem.url = `${window.location.protocol}//${window.location.host}/file/` + srcID
-                const urls = buildFileUrls(srcID, file.name, this.rootUrl)
-                Object.assign(fileItem, urls)
-                fileItem.srcID = srcID
+                const src = response.data[0].src
+                // 判断后端返回的是否为完整直链（http/https 开头）。
+                // CNB 等国内直链渠道：后端直接返回完整访问 URL，前端原样使用，不做任何拼接；
+                // 若在此处再拼 `域名/file/` 会得到 `https://你的域名/file/https://cnb.cool/...` 这种错误链接。
+                if (/^https?:\/\//.test(src)) {
+                    // 直链渠道：直接使用后端返回的完整 URL
+                    fileItem.url = src
+                    // 各格式链接全部基于该直链生成（不拼自定义链接前缀 rootUrl）
+                    fileItem.finalURL = src
+                    fileItem.mdURL = `![${file.name}](${src})`
+                    fileItem.htmlURL = `<img src="${src}" alt="${file.name}" width=100% />`
+                    fileItem.ubbURL = `[img]${src}[/img]`
+                    // srcID 置空：表示该文件不走本站 /file/ 路由，
+                    // 修改"自定义链接前缀"时 updateFileListUrls 会跳过此类文件
+                    fileItem.srcID = ''
+                } else {
+                    // 自托管渠道（Telegram/R2/S3 等）：后端返回 /file/{id} 形式的相对路径，
+                    // 图片存在国外存储中，需要经过本站 Cloudflare 反代加速，
+                    // 因此要去除 /file/ 前缀得到文件 ID，再拼上本站域名和自定义链接前缀
+                    const srcID = src.replace('/file/', '')
+                    fileItem.url = `${window.location.protocol}//${window.location.host}/file/` + srcID
+                    const urls = buildFileUrls(srcID, file.name, this.rootUrl)
+                    Object.assign(fileItem, urls)
+                    fileItem.srcID = srcID
+                }
             }
             fileItem.progreess = 100
             fileItem.status = 'success'
