@@ -5,6 +5,9 @@ const { ElementPlusResolver } = require('unplugin-vue-components/resolvers');
 const CompressionPlugin = require("compression-webpack-plugin")
 
 module.exports = defineConfig({
+  // 生产环境不生成 sourcemap：.map 文件体积大（约占构建产物一半），
+  // 且每次构建哈希都变化，提交进 git 会导致仓库历史快速膨胀
+  productionSourceMap: false,
   configureWebpack: {
     plugins: [
       new CompressionPlugin(),

@@ -151,7 +151,7 @@
             <h1 class="title">
                 <span class="title-crayon-text" aria-hidden="true">{{ ownerName }} ImgHub</span>
                 <span class="title-base-text">
-                    <a class="main-title" href="https://github.com/MarSeventh/CloudFlare-ImgBed" target="_blank">{{ ownerName }}</a> ImgHub
+                    <a class="main-title" :href="titleLink" target="_blank" rel="noopener">{{ ownerName }}</a> ImgHub
                 </span>
             </h1>
         </div>
@@ -375,6 +375,10 @@ export default {
         ...mapGetters(['userConfig', 'uploadCopyUrlForm', 'compressConfig', 'storeUploadChannel', 'storeChannelName', 'storeUploadNameType', 'customUrlSettings', 'storeAutoRetry', 'storeUploadMethod', 'storeUploadFolder']),
         ownerName() {
             return this.userConfig?.ownerName || 'Sanyue'
+        },
+        titleLink() {
+            // 标题跳转链接：优先使用后台配置的 logoLink，留空回退默认开源项目地址
+            return this.userConfig?.logoLink || 'https://github.com/MarSeventh/CloudFlare-ImgBed'
         },
         dialogWidth() {
             return window.innerWidth > 768 ? '50%' : '90%'

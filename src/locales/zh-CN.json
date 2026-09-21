@@ -701,6 +701,8 @@
     "confirmAdminPassword": "请再次输入管理密码",
     "passwordMismatch": "两次输入密码不一致",
     "passwordUnchanged": "未修改（留空保持原密码）",
+    "authEnabled": "认证已开启",
+    "authDisabled": "认证未开启",
     "adminPasswordChangedRelogin": "管理端密码已修改，即将跳转到登录页",
     "clearPassword": "清除认证信息",
     "tokenNameRequired": "请输入Token名称",

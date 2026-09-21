@@ -12,8 +12,11 @@
                 label-width="120px"
             >
                 <el-form-item :label="$t('sysSecurity.uploadPassword')" prop="authCode">
-                    <div style="display: flex; gap: 8px; width: 100%;">
+                    <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
                         <el-input v-model="authSettings.user.authCode" type="password" show-password @input="handleUserPassInput" autocomplete="new-password" :placeholder="authSettings.user._hasPassword ? $t('sysSecurity.passwordUnchanged') : ''" :disabled="clearUserPassword"/>
+                        <el-tag :type="authSettings.user._hasPassword ? 'success' : 'info'" size="large" effect="light" round style="flex-shrink: 0;">
+                            {{ authSettings.user._hasPassword ? $t('sysSecurity.authEnabled') : $t('sysSecurity.authDisabled') }}
+                        </el-tag>
                         <el-checkbox v-if="authSettings.user._hasPassword" v-model="clearUserPassword" @change="handleClearUserPassword">{{ $t('sysSecurity.clearPassword') }}</el-checkbox>
                     </div>
                 </el-form-item>
@@ -36,8 +39,11 @@
                     <el-input v-model="authSettings.admin.adminUsername" autocomplete="new-password" :disabled="clearAdminPassword"/>
                 </el-form-item>
                 <el-form-item :label="$t('sysSecurity.adminPassword')" prop="adminPassword">
-                    <div style="display: flex; gap: 8px; width: 100%;">
+                    <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
                         <el-input v-model="authSettings.admin.adminPassword" type="password" show-password @input="handleAdminPassInput" autocomplete="new-password" :placeholder="authSettings.admin._hasPassword ? $t('sysSecurity.passwordUnchanged') : ''" :disabled="clearAdminPassword"/>
+                        <el-tag :type="authSettings.admin._hasPassword ? 'success' : 'info'" size="large" effect="light" round style="flex-shrink: 0;">
+                            {{ authSettings.admin._hasPassword ? $t('sysSecurity.authEnabled') : $t('sysSecurity.authDisabled') }}
+                        </el-tag>
                         <el-checkbox v-if="authSettings.admin._hasPassword" v-model="clearAdminPassword" @change="handleClearAdminPassword">{{ $t('sysSecurity.clearPassword') }}</el-checkbox>
                     </div>
                 </el-form-item>
@@ -1020,6 +1026,9 @@ methods: {
                 this.showAdminPassConfirm = false;
                 this.clearUserPassword = false;
                 this.clearAdminPassword = false;
+                // 清除本地的 _clear 标记，避免下次保存时误将新密码再次清空
+                delete this.authSettings.user._clear;
+                delete this.authSettings.admin._clear;
             }).catch(() => {
                 // 如果请求过程中 session 已失效导致 fetchWithAuth 跳转，忽略后续错误
             });

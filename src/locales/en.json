@@ -695,6 +695,8 @@
     "confirmAdminPassword": "Please re-enter admin password",
     "passwordMismatch": "Passwords do not match",
     "passwordUnchanged": "Unchanged (leave empty to keep current password)",
+    "authEnabled": "Auth Enabled",
+    "authDisabled": "Auth Disabled",
     "adminPasswordChangedRelogin": "Admin password changed, redirecting to login page",
     "clearPassword": "Clear authentication info",
     "tokenNameRequired": "Please enter token name",
