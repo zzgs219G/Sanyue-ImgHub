@@ -28,6 +28,7 @@
         <div class="upload-list-item-content">
             <div class="upload-list-item-name-wrapper">
                 <el-text class="upload-list-item-name" truncated>{{ truncateFilename(file.name) }}</el-text>
+                <el-tag v-if="compressLabel" class="compress-info-tag" size="small" type="success" effect="light">{{ compressLabel }}</el-tag>
             </div>
             <div class="upload-list-item-url" v-if="file.status==='done'">
                 <div class="upload-list-item-url-row">
@@ -81,6 +82,17 @@ export default {
     computed: {
         urlSize() {
             return window.innerWidth < 768 ? 'small' : 'default'
+        },
+        // 压缩信息标签："1.2MB → 0.5MB (-58%)"；无压缩信息返回空
+        compressLabel() {
+            const info = this.file?.compressInfo
+            if (!info || !info.originalSize || !info.compressedSize) return ''
+            const fmt = (bytes) => {
+                const mb = bytes / 1024 / 1024
+                return mb >= 1 ? `${mb.toFixed(1)}MB` : `${(bytes / 1024).toFixed(0)}KB`
+            }
+            const saved = Math.round((1 - info.compressedSize / info.originalSize) * 100)
+            return `${fmt(info.originalSize)} → ${fmt(info.compressedSize)} (-${saved}%)`
         }
     },
     methods: {
@@ -194,6 +206,11 @@ export default {
     color: var(--el-text-color-primary);
     letter-spacing: 0.3px;
     text-align: center;
+}
+.compress-info-tag {
+    margin-left: 8px;
+    font-size: 12px;
+    flex-shrink: 0;
 }
 
 /* Progress Bar */

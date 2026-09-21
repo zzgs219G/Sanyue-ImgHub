@@ -80,7 +80,19 @@ const userAuthGuard = (to, from, next) => {
     } else {
       next()
     }
-  }).catch(() => {
+  }).catch((err) => {
+    // 数据库/后端不可用（503/500/网络错误）：明确提示服务异常，
+    // 不再误导向登录页让用户误以为密码错误
+    const status = err?.response?.status
+    if (status === 503 || status === 500 || !status) {
+      if (to.name !== 'login') {
+        ElMessage.error(i18n.global.t('login.serviceUnavailable'))
+        next(false)
+      } else {
+        next()
+      }
+      return
+    }
     const wasLoggedIn = store.state.userLoggedIn
     store.commit('setUserLoggedIn', false)
     if (to.name !== 'login') {
@@ -98,8 +110,9 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    component: () => import('../views/UploadHome.vue'),
-    beforeEnter: userAuthGuard
+    component: () => import('../views/UploadHome.vue')
+    // 不再挂 userAuthGuard：进站不弹认证，普通用户可直接浏览和选文件，
+    // 认证延迟到真正上传时（UploadForm.beforeUpload）触发
   },
   {
     path: '/login',

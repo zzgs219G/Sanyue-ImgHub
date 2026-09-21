@@ -113,6 +113,12 @@
                                     <span class="info-text" :title="channel.publicUrl">{{ channel.publicUrl }}</span>
                                 </div>
                             </template>
+                            <template v-else-if="channelType.value === 'cnb'">
+                                <div class="info-item">
+                                    <font-awesome-icon icon="database" class="info-icon"/>
+                                    <span class="info-text" :title="channel.repoUrl">{{ channel.repoUrl || $t('sysUpload.notSet') }}</span>
+                                </div>
+                            </template>
                         </div>
                         <!-- 容量显示 -->
                         <div v-if="channel.quota?.enabled" class="quota-mini">
@@ -271,6 +277,14 @@
                         <el-switch v-model="newChannel.isPrivate"/>
                     </el-form-item>
                 </template>
+                <template v-else-if="newChannel.type === 'cnb'">
+                    <el-form-item :label="$t('sysUpload.cnbRepoUrl')" prop="repoUrl">
+                        <el-input v-model="newChannel.repoUrl" :placeholder="$t('sysUpload.cnbRepoUrlPlaceholder')"/>
+                    </el-form-item>
+                    <el-form-item :label="$t('sysUpload.cnbToken')" prop="token">
+                        <el-input v-model="newChannel.token" type="password" show-password :placeholder="$t('sysUpload.cnbTokenPlaceholder')"/>
+                    </el-form-item>
+                </template>
                 <template v-else-if="newChannel.type === 'webdav'">
                     <el-form-item :label="$t('sysUpload.webdavBaseUrl')" prop="baseUrl">
                         <el-input v-model="newChannel.baseUrl" :placeholder="$t('sysUpload.webdavBaseUrlPlaceholder')"/>
@@ -365,6 +379,11 @@
                 <template v-else-if="currentChannelType === 'huggingface'">
                     <el-descriptions-item :label="$t('sysUpload.repoName')">{{ currentChannel?.repo }}</el-descriptions-item>
                     <el-descriptions-item :label="$t('sysUpload.privateRepo')">{{ currentChannel?.isPrivate ? $t('sysUpload.isPathStyle') : $t('sysUpload.isNotPathStyle') }}</el-descriptions-item>
+                </template>
+                <template v-else-if="currentChannelType === 'cnb'">
+                    <el-descriptions-item :label="$t('sysUpload.cnbRepoUrl')">
+                        <el-input :model-value="currentChannel?.repoUrl" readonly />
+                    </el-descriptions-item>
                 </template>
                 <template v-else-if="currentChannelType === 'webdav'">
                     <el-descriptions-item :label="$t('sysUpload.webdavBaseUrl')">
@@ -539,6 +558,14 @@
                         <el-switch v-model="editChannel.isPrivate"/>
                     </el-form-item>
                 </template>
+                <template v-else-if="currentChannelType === 'cnb'">
+                    <el-form-item :label="$t('sysUpload.cnbRepoUrl')" prop="repoUrl">
+                        <el-input v-model="editChannel.repoUrl" :disabled="editChannel.fixed"/>
+                    </el-form-item>
+                    <el-form-item :label="$t('sysUpload.cnbToken')" prop="token">
+                        <el-input v-model="editChannel.token" :disabled="editChannel.fixed" type="password" show-password/>
+                    </el-form-item>
+                </template>
                 <template v-else-if="currentChannelType === 'webdav'">
                     <el-form-item :label="$t('sysUpload.webdavBaseUrl')" prop="baseUrl">
                         <el-input v-model="editChannel.baseUrl" :disabled="editChannel.fixed"/>
@@ -612,7 +639,8 @@ data() {
         { value: 's3', label: 'S3' },
         { value: 'discord', label: 'Discord' },
         { value: 'huggingface', label: 'HuggingFace' },
-        { value: 'webdav', label: 'WebDAV' }
+        { value: 'webdav', label: 'WebDAV' },
+        { value: 'cnb', label: 'CNB' }
     ],
     // 可添加的渠道类型
     addableChannels: [
@@ -621,7 +649,8 @@ data() {
         { value: 's3', label: 'S3' },
         { value: 'discord', label: 'Discord' },
         { value: 'huggingface', label: 'HuggingFace' },
-        { value: 'webdav', label: 'WebDAV' }
+        { value: 'webdav', label: 'WebDAV' },
+        { value: 'cnb', label: 'CNB' }
     ],
 
     // 各渠道配置
@@ -631,6 +660,7 @@ data() {
     discordSettings: { loadBalance: { enabled: false }, channels: [] },
     huggingfaceSettings: { loadBalance: { enabled: false }, channels: [] },
     webdavSettings: { loadBalance: { enabled: false }, channels: [] },
+    cnbSettings: { channels: [] },
 
     // 弹窗控制
     showAddDialog: false,
@@ -674,7 +704,9 @@ data() {
         password: '',
         publicUrl: '',
         headersText: '',
-        createDirectory: true
+        createDirectory: true,
+        // CNB
+        repoUrl: ''
     },
 
     // 容量统计数据
@@ -784,7 +816,8 @@ methods: {
             s3: this.s3Settings,
             discord: this.discordSettings,
             huggingface: this.huggingfaceSettings,
-            webdav: this.webdavSettings
+            webdav: this.webdavSettings,
+            cnb: this.cnbSettings
         };
         return map[type];
     },
@@ -863,7 +896,8 @@ methods: {
             channelId: '', isNitro: false,
             repo: '', token: '', isPrivate: false,
             baseUrl: '', username: '', password: '', publicUrl: '',
-            headersText: '', createDirectory: true
+            headersText: '', createDirectory: true,
+            repoUrl: ''
         };
     },
     // 重置详情弹窗数据
@@ -903,7 +937,8 @@ methods: {
             password: '',
             publicUrl: '',
             headersText: '',
-            createDirectory: true
+            createDirectory: true,
+            repoUrl: ''
         };
     },
     // 确认添加渠道
@@ -967,6 +1002,11 @@ methods: {
                     repo: this.newChannel.repo,
                     token: this.newChannel.token,
                     isPrivate: this.newChannel.isPrivate
+                });
+            } else if (type === 'cnb') {
+                Object.assign(newChannelData, {
+                    repoUrl: this.newChannel.repoUrl,
+                    token: this.newChannel.token
                 });
             } else if (type === 'webdav') {
                 const headers = this.parseHeadersText(this.newChannel.headersText);
@@ -1046,7 +1086,8 @@ methods: {
             s3: this.s3Settings,
             discord: this.discordSettings,
             huggingface: this.huggingfaceSettings,
-            webdav: this.webdavSettings
+            webdav: this.webdavSettings,
+            cnb: this.cnbSettings
         };
         fetchWithAuth('/api/manage/sysConfig/upload', {
             method: 'POST',
@@ -1240,6 +1281,8 @@ mounted() {
             }));
         }
         this.webdavSettings = data.webdav || { loadBalance: {}, channels: [] };
+        // 确保 CNB 渠道有默认值
+        this.cnbSettings = data.cnb || { channels: [] };
         // 加载容量统计（仅读取，不重建索引）
         this.loadQuotaStats();
     })

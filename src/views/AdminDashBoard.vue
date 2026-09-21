@@ -1266,6 +1266,33 @@ methods: {
                     text = this.paginatedTableData[index].metadata?.S3Location || 'none';
                     break;
             }
+        } else if (this.paginatedTableData[index].metadata?.Channel === 'CNB') {
+            // CNB 渠道：复制国内直链，不经过 /file/ 路由
+            const cnbUrl = this.paginatedTableData[index].metadata?.CnbUrl;
+            switch (this.defaultUrlFormat) {
+                case 'originUrl':
+                    text = cnbUrl || `${this.rootUrl}${key}`;
+                    break;
+                case 'mdUrl':
+                    text = cnbUrl
+                        ? `![${this.paginatedTableData[index].metadata?.FileName || key}](${cnbUrl})`
+                        : `![${this.paginatedTableData[index].metadata?.FileName || key}](${this.rootUrl}${key})`;
+                    break;
+                case 'htmlUrl':
+                    text = cnbUrl
+                        ? `<img src="${cnbUrl}" alt="${this.paginatedTableData[index].metadata?.FileName || key}" width=100%>`
+                        : `<img src="${this.rootUrl}${key}" alt="${this.paginatedTableData[index].metadata?.FileName || key}" width=100%>`;
+                    break;
+                case 'bbUrl':
+                    text = cnbUrl ? `[img]${cnbUrl}[/img]` : `[img]${this.rootUrl}${key}[/img]`;
+                    break;
+                case 'tgId':
+                    text = this.paginatedTableData[index].metadata?.TgFileId || 'none';
+                    break;
+                case 's3Location':
+                    text = this.paginatedTableData[index].metadata?.S3Location || 'none';
+                    break;
+            }
         } else {
             switch (this.defaultUrlFormat) {
                 case 'originUrl':

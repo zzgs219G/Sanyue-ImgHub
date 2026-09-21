@@ -69,7 +69,15 @@ export default {
 
             try {
                 const [result] = await Promise.all([loginPromise, minDelayPromise]);
-                
+
+                // 数据库/后端不可用：明确提示，避免误判为密码错误
+                const errStatus = result.err?.response?.status;
+                if (result.err && (errStatus === 503 || errStatus === 500 || !errStatus)) {
+                    this.isLoading = false;
+                    this.$message.error(this.$t('login.serviceUnavailable'));
+                    return;
+                }
+
                 if (result.res && result.res.status === 200) {
                     // 会话 Token 已通过 HttpOnly Cookie 由后端设置
                     this.$store.commit('setUserLoggedIn', true);

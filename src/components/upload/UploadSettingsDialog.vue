@@ -113,9 +113,9 @@
                         </el-tooltip>
                     </span>
                     <div class="slider-wrapper">
-                        <el-slider :model-value="compressBar" @update:model-value="$emit('update:compressBar', $event)" :min="1" :max="20" :format-tooltip="(value) => `${value} MB`"/>
+                        <el-slider :model-value="compressBar" @update:model-value="$emit('update:compressBar', $event)" :min="0.1" :max="20" :step="0.1" :format-tooltip="(value) => `${value} MB`"/>
                         <div class="slider-input-wrapper">
-                            <el-input-number :model-value="compressBar" @update:model-value="$emit('update:compressBar', $event)" :min="1" :max="20" :step="1" :value-on-clear="1" class="slider-input" controls-position="right"/>
+                            <el-input-number :model-value="compressBar" @update:model-value="$emit('update:compressBar', $event)" :min="0.1" :max="20" :step="0.1" :value-on-clear="0.5" class="slider-input" controls-position="right"/>
                             <span class="slider-unit">MB</span>
                         </div>
                     </div>
@@ -128,9 +128,9 @@
                         </el-tooltip>
                     </span>
                     <div class="slider-wrapper">
-                        <el-slider :model-value="compressQuality" @update:model-value="$emit('update:compressQuality', $event)" :min="0.5" :max="compressBar" :step="0.1" :format-tooltip="(value) => `${value} MB`"/>
+                        <el-slider :model-value="compressQuality" @update:model-value="$emit('update:compressQuality', $event)" :min="0.1" :max="compressBar" :step="0.1" :format-tooltip="(value) => `${value} MB`"/>
                         <div class="slider-input-wrapper">
-                            <el-input-number :model-value="compressQuality" @update:model-value="$emit('update:compressQuality', $event)" :min="0.5" :max="compressBar" :step="0.1" :precision="1" :value-on-clear="0.5" class="slider-input" controls-position="right"/>
+                            <el-input-number :model-value="compressQuality" @update:model-value="$emit('update:compressQuality', $event)" :min="0.1" :max="compressBar" :step="0.1" :precision="1" :value-on-clear="0.5" class="slider-input" controls-position="right"/>
                             <span class="slider-unit">MB</span>
                         </div>
                     </div>
@@ -169,7 +169,8 @@ const CHANNEL_OPTIONS = [
     { value: 's3', label: 'S3' },
     { value: 'discord', label: 'DC' },
     { value: 'huggingface', label: 'HF' },
-    { value: 'webdav', label: 'WD' }
+    { value: 'webdav', label: 'WD' },
+    { value: 'cnb', label: 'CNB' }
 ]
 
 export default {

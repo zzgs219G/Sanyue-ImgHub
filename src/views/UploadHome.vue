@@ -124,6 +124,11 @@
                             <font-awesome-icon icon="link" class="quick-toolbar-icon"/>
                         </el-button>
                     </el-tooltip>
+                    <el-tooltip :disabled="disableTooltip || !isQuickToolbarOpen" :content="customerCompress ? $t('upload.autoCompressOn') : $t('upload.autoCompressOff')" placement="left" :hide-after="0" :show-after="1000">
+                        <el-button class="quick-toolbar-button" :class="{ 'is-active': customerCompress }" @click="toggleQuickCompress">
+                            <font-awesome-icon icon="compress-alt" class="quick-toolbar-icon"/>
+                        </el-button>
+                    </el-tooltip>
                 </div>
             </div>
             <el-tooltip :disabled="disableTooltip" :content="$t('upload.settings')" placement="left" :hide-after="0" :show-after="1000">
@@ -271,9 +276,9 @@ export default {
             selectedUrlForm: ref(''),
             showUrlDialog: false,
             showCompressDialog: false,
-            customerCompress: true, //上传前压缩
-            compressQuality: 4, //压缩后大小
-            compressBar: 5, //压缩阈值
+            customerCompress: true, //上传前压缩（默认开启智能压缩）
+            compressQuality: 0.5, //压缩后目标大小(MB)
+            compressBar: 0.5, //压缩阈值(MB)：默认超过0.5MB就压缩
             convertToWebp: false, //转换为WebP格式
             serverCompress: true, //服务器端压缩
             uploadChannel: '', //上传渠道
@@ -304,9 +309,9 @@ export default {
             this.updateCompressConfig('compressQuality', val)
         },
         compressBar(val) {
-            // 确保值在有效范围内
-            if (val === null || val === undefined || val < 1) {
-                this.compressBar = 1
+            // 确保值在有效范围内（最低0.1MB，支持小图智能压缩）
+            if (val === null || val === undefined || val < 0.1) {
+                this.compressBar = 0.1
                 return
             }
             // 确保期望大小不超过压缩阈值
@@ -401,8 +406,8 @@ export default {
         this.selectedUrlForm = this.uploadCopyUrlForm || 'url'
         // 读取用户选择的压缩设置（优先用户设置，其次系统默认配置）
         this.customerCompress = this.compressConfig.customerCompress ?? this.parseBoolean(this.userConfig?.defaultCustomerCompress, true)
-        this.compressQuality = this.compressConfig.compressQuality ?? this.parseNumber(this.userConfig?.defaultCompressQuality, 4)
-        this.compressBar = this.compressConfig.compressBar ?? this.parseNumber(this.userConfig?.defaultCompressBar, 5)
+        this.compressQuality = this.compressConfig.compressQuality ?? this.parseNumber(this.userConfig?.defaultCompressQuality, 0.5)
+        this.compressBar = this.compressConfig.compressBar ?? this.parseNumber(this.userConfig?.defaultCompressBar, 0.5)
         this.serverCompress = this.compressConfig.serverCompress ?? true
         this.convertToWebp = this.compressConfig.convertToWebp ?? this.parseBoolean(this.userConfig?.defaultConvertToWebp, false)
         // 读取用户选择的上传渠道
@@ -534,6 +539,11 @@ export default {
         },
         openCompressDialog() {
             this.showCompressDialog = true
+        },
+        // 快捷工具栏：一键开/关自动压缩
+        toggleQuickCompress() {
+            this.customerCompress = !this.customerCompress
+            this.$message.success(this.customerCompress ? this.$t('upload.compressEnabledMsg') : this.$t('upload.compressDisabledMsg'))
         },
         updateCompressConfig(key, value) {
             this.$store.commit('setCompressConfig', { key, value })

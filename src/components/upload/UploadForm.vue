@@ -172,6 +172,7 @@
 
 <script>
 import axios from '@/utils/axios'
+import store from '@/store'
 import * as imageConversion from 'image-conversion'
 import { mapGetters } from 'vuex'
 import { buildFileUrls, updateFileListUrls, getUrlByFormat } from '@/utils/upload/urlBuilder'
@@ -969,6 +970,32 @@ methods: {
     },
     beforeUpload(file) {
         return new Promise(async (resolve, reject) => {
+            // 上传前认证检查：进站不弹认证，选完文件真正上传时才要求认证
+            // 未认证则跳转登录页，本次上传取消
+            try {
+                const sessionRes = await axios.get('/api/auth/sessionCheck', { withCredentials: true })
+                const sessionData = sessionRes.data || {}
+                if (sessionData.userRequired && !sessionData.valid) {
+                    store.commit('setUserLoggedIn', false)
+                    this.$message.warning(this.$t('uploadForm.authRequiredBeforeUpload'))
+                    this.$router.push('/login')
+                    reject(this.$t('uploadForm.authRequiredBeforeUpload'))
+                    return
+                }
+                store.commit('setUserLoggedIn', true)
+            } catch (err) {
+                const status = err?.response?.status
+                if (status === 503 || status === 500 || !status) {
+                    // 数据库/后端不可用：明确提示，不误导为认证问题
+                    this.$message.error(this.$t('login.serviceUnavailable'))
+                } else {
+                    this.$message.warning(this.$t('uploadForm.authRequiredBeforeUpload'))
+                    this.$router.push('/login')
+                }
+                reject(err)
+                return
+            }
+
             let processedFile = file
             
             // WebP 转换：在压缩之前进行
@@ -996,7 +1023,7 @@ methods: {
             const needCustomCompress = processedFile.type.includes('image') && this.customerCompress && processedFile.size / 1024 / 1024 > this.compressBar
             const isLtLim = processedFile.size / 1024 / 1024 <= 1024 || this.uploadChannel !== 'telegram'
 
-            const pushFileToQueue = (file, serverCompress) => {
+            const pushFileToQueue = (file, serverCompress, compressInfo) => {
                 const fileUrl = URL.createObjectURL(file)
                 this.fileList.push({
                     uid: file.uid,
@@ -1010,6 +1037,8 @@ methods: {
                     status: 'uploading',
                     progreess: 0,
                     serverCompress: serverCompress,
+                    // 压缩信息：{ originalSize, compressedSize }（字节），供前端展示压缩效果
+                    compressInfo: compressInfo || null,
                     uploadFolder: file.uploadFolder ?? this.uploadFolder,
                     retryCount: 0,
                 })
@@ -1019,6 +1048,20 @@ methods: {
             if (needCustomCompress) {
                 //尝试压缩图片
                 imageConversion.compressAccurately(processedFile, 1024 * this.compressQuality).then((res) => {
+                    // 智能判断：压缩后反而更大，则放弃压缩用原文件
+                    if (res.size >= processedFile.size) {
+                        console.log(`压缩后体积未减小(${(processedFile.size/1024).toFixed(1)}KB -> ${(res.size/1024).toFixed(1)}KB)，使用原文件: ${processedFile.name}`)
+                        const isLtLimNoCompress = processedFile.size / 1024 / 1024 <= 1024 || this.uploadChannel !== 'telegram'
+                        if (!isLtLimNoCompress) {
+                            this.$message.error(this.$t('uploadForm.fileTooLarge', { name: processedFile.name }))
+                            reject(this.$t('uploadForm.fileSizeTooLarge'))
+                            return
+                        }
+                        this.uploading = true
+                        const needServerCompress = this.uploadChannel === 'telegram' && this.serverCompress && (processedFile.type.includes('image') ? processedFile.size / 1024 / 1024 < 10 : true)
+                        pushFileToQueue(processedFile, needServerCompress, null)
+                        return
+                    }
                     //如果压缩后大于1024MB，且上传渠道为telegram，则不上传
                     if (res.size / 1024 / 1024 > 1024 && this.uploadChannel === 'telegram') {
                         this.$message.error(this.$t('uploadForm.compressedFileTooLarge', { name: processedFile.name }))
@@ -1033,7 +1076,11 @@ methods: {
                     //开启服务端压缩条件：1.开启服务端压缩 2.文件大小小于10MB 3.上传渠道为Telegram
                     const needServerCompress = this.serverCompress && newFile.size / 1024 / 1024 < 10 && this.uploadChannel === 'telegram'
 
-                    pushFileToQueue(newFile, needServerCompress)
+                    // 记录压缩信息：原大小 -> 压缩后大小
+                    pushFileToQueue(newFile, needServerCompress, {
+                        originalSize: processedFile.size,
+                        compressedSize: res.size
+                    })
                 }).catch((err) => {
                     this.$message.error(this.$t('uploadForm.compressFailedCannotUpload', { name: processedFile.name }))
                     reject(err)
@@ -1362,11 +1409,30 @@ methods: {
             if (isManualRetry || retryCount < this.maxRetryCount) {
                 if (!isManualRetry) fileItem.retryCount = retryCount + 1
                 fileItem.progreess = 0
-                this.uploadFile({ 
-                    file: file.file, 
-                    onProgress: (evt) => this.handleProgress(evt), 
-                    onSuccess: (response, file) => this.handleSuccess(response, file), 
-                    onError: (error, file) => this.handleError(error, file) 
+                // 重试同样走认证检查：session 过期时引导用户重新认证
+                axios.get('/api/auth/sessionCheck', { withCredentials: true }).then(sessionRes => {
+                    const sessionData = sessionRes.data || {}
+                    if (sessionData.userRequired && !sessionData.valid) {
+                        store.commit('setUserLoggedIn', false)
+                        this.$message.warning(this.$t('uploadForm.authRequiredBeforeUpload'))
+                        this.$router.push('/login')
+                        return
+                    }
+                    store.commit('setUserLoggedIn', true)
+                    this.uploadFile({
+                        file: file.file,
+                        onProgress: (evt) => this.handleProgress(evt),
+                        onSuccess: (response, file) => this.handleSuccess(response, file),
+                        onError: (error, file) => this.handleError(error, file)
+                    });
+                }).catch(err => {
+                    const status = err?.response?.status
+                    if (status === 503 || status === 500 || !status) {
+                        this.$message.error(this.$t('login.serviceUnavailable'))
+                    } else {
+                        this.$message.warning(this.$t('uploadForm.authRequiredBeforeUpload'))
+                        this.$router.push('/login')
+                    }
                 });
             } else {
                 // 达到自动重试上限后保留失败请求，供用户手动重试
